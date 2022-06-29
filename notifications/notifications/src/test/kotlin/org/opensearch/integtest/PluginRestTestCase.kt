@@ -26,7 +26,6 @@ import org.opensearch.commons.rest.SecureRestClientBuilder
 import org.opensearch.notifications.NotificationPlugin
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestStatus
-import org.opensearch.test.junit.annotations.TestLogging
 import org.opensearch.test.rest.OpenSearchRestTestCase
 import java.io.IOException
 import java.nio.file.Files
@@ -36,7 +35,6 @@ import javax.management.ObjectName
 import javax.management.remote.JMXConnectorFactory
 import javax.management.remote.JMXServiceURL
 
-@TestLogging("level:DEBUG", reason = "Debug for tests.")
 abstract class PluginRestTestCase : OpenSearchRestTestCase() {
 
     protected fun isHttps(): Boolean {
@@ -145,7 +143,6 @@ abstract class PluginRestTestCase : OpenSearchRestTestCase() {
         val response = try {
             client.performRequest(request)
         } catch (exception: ResponseException) {
-            logger.error("this is an exception: ${exception.message}")
             exception.response
         }
         if (expectedRestStatus != null) {
