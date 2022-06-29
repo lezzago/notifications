@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.integtest.config
+package org.opensearch.integtest
 
 import org.junit.Assert
 import org.junit.BeforeClass
@@ -11,23 +11,13 @@ import org.opensearch.commons.notifications.model.ConfigType
 import org.opensearch.commons.notifications.model.NotificationConfig
 import org.opensearch.commons.notifications.model.Slack
 import org.opensearch.commons.rest.SecureRestClientBuilder
-import org.opensearch.integtest.ALL_ACCESS_ROLE
-import org.opensearch.integtest.NOTIFICATION_DELETE_CONFIG_ACCESS
-import org.opensearch.integtest.NOTIFICATION_GET_CHANNEL_ACCESS
-import org.opensearch.integtest.NOTIFICATION_GET_CONFIG_ACCESS
-import org.opensearch.integtest.NOTIFICATION_GET_PLUGIN_FEATURE_ACCESS
-import org.opensearch.integtest.NOTIFICATION_NO_ACCESS_ROLE
-import org.opensearch.integtest.NOTIFICATION_TEST_SEND_ACCESS
-import org.opensearch.integtest.NOTIFICATION_UPDATE_CONFIG_ACCESS
-import org.opensearch.integtest.PluginRestTestCase
-import org.opensearch.integtest.ROLE_TO_PERMISSION_MAPPING
 import org.opensearch.notifications.NotificationPlugin
 import org.opensearch.notifications.verifyChannelIdEquals
 import org.opensearch.notifications.verifySingleConfigEquals
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestStatus
 
-class SecurityNotificationConfigIT : PluginRestTestCase() {
+class SecurityNotificationIT : PluginRestTestCase() {
 
     companion object {
         @BeforeClass
