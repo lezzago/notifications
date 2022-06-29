@@ -36,7 +36,7 @@ jobs:
 
       - name: Pull and Run Docker
         run: |
-          plugin-core=`basename $(ls notifications/core/build/distributions/*.zip)`
+          plugin_core=`basename $(ls notifications/core/build/distributions/*.zip)`
           plugin=`basename $(ls notifications/notifications/build/distributions/*.zip)`
           list_of_files=`ls`
           list_of_all_files=`ls notifications/core/build/distributions/`
@@ -54,8 +54,8 @@ jobs:
             echo "FROM opensearchstaging/opensearch:$docker_version" >> Dockerfile
             echo "RUN if [ -d /usr/share/opensearch/plugins/opensearch-notification-core ]; then /usr/share/opensearch/bin/opensearch-plugin remove opensearch-notification-core; fi" >> Dockerfile
             echo "RUN if [ -d /usr/share/opensearch/plugins/opensearch-notification ]; then /usr/share/opensearch/bin/opensearch-plugin remove opensearch-notification; fi" >> Dockerfile
-            echo "ADD notifications/core/build/distributions/$plugin-core /tmp/" >> Dockerfile
-            echo "RUN /usr/share/opensearch/bin/opensearch-plugin-core install --batch file:/tmp/$plugin" >> Dockerfile
+            echo "ADD notifications/core/build/distributions/$plugin_core /tmp/" >> Dockerfile
+            echo "RUN /usr/share/opensearch/bin/opensearch-plugin_core install --batch file:/tmp/$plugin" >> Dockerfile
             echo "ADD notifications/core/build/distributions/$plugin /tmp/" >> Dockerfile
             echo "RUN /usr/share/opensearch/bin/opensearch-plugin install --batch file:/tmp/$plugin" >> Dockerfile
             docker build -t opensearch-notifications:test .
