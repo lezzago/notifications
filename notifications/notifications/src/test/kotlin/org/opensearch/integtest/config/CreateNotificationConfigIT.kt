@@ -6,6 +6,7 @@
 package org.opensearch.integtest.config
 
 import org.junit.Assert
+import org.opensearch.client.ResponseException
 import org.opensearch.commons.notifications.model.Chime
 import org.opensearch.commons.notifications.model.ConfigType
 import org.opensearch.commons.notifications.model.MethodType
@@ -13,7 +14,13 @@ import org.opensearch.commons.notifications.model.NotificationConfig
 import org.opensearch.commons.notifications.model.Slack
 import org.opensearch.commons.notifications.model.SmtpAccount
 import org.opensearch.commons.notifications.model.Webhook
+import org.opensearch.commons.rest.SecureRestClientBuilder
+import org.opensearch.integtest.ALL_ACCESS_ROLE
+import org.opensearch.integtest.NOTIFICATION_CREATE_CONFIG_ACCESS
+import org.opensearch.integtest.NOTIFICATION_FULL_ACCESS_ROLE
+import org.opensearch.integtest.NOTIFICATION_NO_ACCESS_ROLE
 import org.opensearch.integtest.PluginRestTestCase
+import org.opensearch.integtest.ROLE_TO_PERMISSION_MAPPING
 import org.opensearch.notifications.NotificationPlugin.Companion.PLUGIN_BASE_URI
 import org.opensearch.notifications.verifySingleConfigEquals
 import org.opensearch.rest.RestRequest
@@ -64,6 +71,102 @@ class CreateNotificationConfigIT : PluginRestTestCase() {
         )
         verifySingleConfigEquals(configId, referenceObject, getConfigResponse)
     }
+
+//    fun `test Create slack notification config with user that has create Notification permission`() {
+//
+//        val user = "userOne"
+//        createUserWithCustomRole(user, NOTIFICATION_CREATE_CONFIG_ACCESS, "", ROLE_TO_PERMISSION_MAPPING[NOTIFICATION_CREATE_CONFIG_ACCESS])
+////        createUserWithRoles(user, ALL_ACCESS_ROLE, "HR")
+//        val userClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
+//
+//        // Create sample config request reference
+//        val sampleSlack = Slack("https://domain.com/sample_slack_url#1234567890")
+//        val referenceObject = NotificationConfig(
+//            "this is a sample config name",
+//            "this is a sample config description",
+//            ConfigType.SLACK,
+//            isEnabled = true,
+//            configData = sampleSlack
+//        )
+//
+//        // Create slack notification config
+//        val createRequestJsonString = """
+//        {
+//            "config":{
+//                "name":"${referenceObject.name}",
+//                "description":"${referenceObject.description}",
+//                "config_type":"slack",
+//                "is_enabled":${referenceObject.isEnabled},
+//                "slack":{"url":"${(referenceObject.configData as Slack).url}"}
+//            }
+//        }
+//        """.trimIndent()
+//        val createResponse = executeRequest(
+//            RestRequest.Method.POST.name,
+//            "$PLUGIN_BASE_URI/configs",
+//            createRequestJsonString,
+//            RestStatus.OK.status,
+//            userClient
+//        )
+//        val configId = createResponse.get("config_id").asString
+//        Assert.assertNotNull(configId)
+//        Thread.sleep(1000)
+//
+//        // Get Slack notification config
+//
+//        val getConfigResponse = executeRequest(
+//            RestRequest.Method.GET.name,
+//            "$PLUGIN_BASE_URI/configs/$configId",
+//            "",
+//            RestStatus.OK.status,
+//            adminClient()
+//        )
+//        verifySingleConfigEquals(configId, referenceObject, getConfigResponse)
+//
+//        userClient.close()
+//        executeRequest(RestRequest.Method.DELETE.name, "/_plugins/_security/api/internalusers/$user", "", RestStatus.OK.status, adminClient())
+//    }
+//
+//    fun `test Create slack notification config without create Notification permission`() {
+//
+//        val user = "userThree"
+//        createUserWithCustomRole(user, NOTIFICATION_NO_ACCESS_ROLE, "", ROLE_TO_PERMISSION_MAPPING[NOTIFICATION_NO_ACCESS_ROLE])
+////        createUserWithRoles(user, ALL_ACCESS_ROLE, "HR")
+//        val userClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
+//
+//        // Create sample config request reference
+//        val sampleSlack = Slack("https://domain.com/sample_slack_url#1234567890")
+//        val referenceObject = NotificationConfig(
+//            "this is a sample config name",
+//            "this is a sample config description",
+//            ConfigType.SLACK,
+//            isEnabled = true,
+//            configData = sampleSlack
+//        )
+//
+//        // Create slack notification config
+//        val createRequestJsonString = """
+//        {
+//            "config":{
+//                "name":"${referenceObject.name}",
+//                "description":"${referenceObject.description}",
+//                "config_type":"slack",
+//                "is_enabled":${referenceObject.isEnabled},
+//                "slack":{"url":"${(referenceObject.configData as Slack).url}"}
+//            }
+//        }
+//        """.trimIndent()
+//
+//        executeRequest(
+//            RestRequest.Method.POST.name,
+//            "$PLUGIN_BASE_URI/configs",
+//            createRequestJsonString,
+//            RestStatus.FORBIDDEN.status,
+//            userClient
+//        )
+//        userClient.close()
+//        executeRequest(RestRequest.Method.DELETE.name, "/_plugins/_security/api/internalusers/$user", "", RestStatus.OK.status, adminClient())
+//    }
 
     fun `test Create chime notification config with ID`() {
         // Create sample config request reference
