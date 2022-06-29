@@ -3,7 +3,7 @@
  # SPDX-License-Identifier: Apache-2.0
 ##
  
-name: Test and Build Notifications
+name: Security Test and Build Notifications
 
 on: [push, pull_request]
 
