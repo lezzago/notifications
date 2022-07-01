@@ -5,8 +5,11 @@
 
 package org.opensearch.integtest.config
 
+import org.junit.After
 import org.junit.Assert
+import org.junit.Before
 import org.junit.BeforeClass
+import org.opensearch.client.RestClient
 import org.opensearch.commons.notifications.model.ConfigType
 import org.opensearch.commons.notifications.model.NotificationConfig
 import org.opensearch.commons.notifications.model.Slack
@@ -37,10 +40,29 @@ class SecurityNotificationConfigIT : PluginRestTestCase() {
         }
     }
 
+    val user = "integTestUser"
+    var userClient: RestClient? = null
+
+    @Before
+    fun create() {
+
+        if (userClient == null) {
+//            createUser(user, user, arrayOf())
+            userClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
+        }
+    }
+
+    @After
+    fun cleanup() {
+
+        userClient?.close()
+//        deleteUser(user)
+    }
+
     fun `test Create slack notification config with user that has create Notification permission`() {
-        val user = "userOne"
-        createUserWithRoles(user, ALL_ACCESS_ROLE, "")
-        val userClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
+//        val user = "tempo"
+        createUserWithCustomRole(user, NOTIFICATION_CREATE_CONFIG_ACCESS, "", ROLE_TO_PERMISSION_MAPPING[NOTIFICATION_CREATE_CONFIG_ACCESS])
+//        val userClient2 = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
 
         // Create sample config request reference
         val sampleSlack = Slack("https://domain.com/sample_slack_url#1234567890")
@@ -64,34 +86,36 @@ class SecurityNotificationConfigIT : PluginRestTestCase() {
             }
         }
         """.trimIndent()
-        val createResponse = executeRequest(
-            RestRequest.Method.POST.name,
-            "${NotificationPlugin.PLUGIN_BASE_URI}/configs",
-            createRequestJsonString,
-            RestStatus.OK.status,
-            userClient
-        )
-        val configId = createResponse.get("config_id").asString
-        Assert.assertNotNull(configId)
-        Thread.sleep(1000)
+        try {
+            val createResponse = executeRequest(
+                RestRequest.Method.POST.name,
+                "${NotificationPlugin.PLUGIN_BASE_URI}/configs",
+                createRequestJsonString,
+                RestStatus.OK.status,
+                userClient!!
+            )
+            val configId = createResponse.get("config_id").asString
+            Assert.assertNotNull(configId)
+            Thread.sleep(1000)
 
-        // Get Slack notification config
-        val getConfigResponse = executeRequest(
-            RestRequest.Method.GET.name,
-            "${NotificationPlugin.PLUGIN_BASE_URI}/configs/$configId",
-            "",
-            RestStatus.OK.status
-        )
-        verifySingleConfigEquals(configId, referenceObject, getConfigResponse)
-
-        deleteUserWithRoles(user, ALL_ACCESS_ROLE)
-        userClient.close()
+            // Get Slack notification config
+            val getConfigResponse = executeRequest(
+                RestRequest.Method.GET.name,
+                "${NotificationPlugin.PLUGIN_BASE_URI}/configs/$configId",
+                "",
+                RestStatus.OK.status
+            )
+            verifySingleConfigEquals(configId, referenceObject, getConfigResponse)
+        } finally {
+            deleteUserWithCustomRole(user, NOTIFICATION_CREATE_CONFIG_ACCESS)
+//            userClient2.close()
+        }
     }
 
     fun `test Create slack notification config without create Notification permission`() {
-        val user = "noPermissionsUser"
+//        val user = "noPermissionsUser"
         createUserWithCustomRole(user, NOTIFICATION_NO_ACCESS_ROLE, "", ROLE_TO_PERMISSION_MAPPING[NOTIFICATION_NO_ACCESS_ROLE])
-        val userClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
+        //        val userClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
 
         // Create sample config request reference
         val sampleSlack = Slack("https://domain.com/sample_slack_url#1234567890")
@@ -121,16 +145,16 @@ class SecurityNotificationConfigIT : PluginRestTestCase() {
             "${NotificationPlugin.PLUGIN_BASE_URI}/configs",
             createRequestJsonString,
             RestStatus.FORBIDDEN.status,
-            userClient
+            userClient!!
         )
         deleteUserWithCustomRole(user, NOTIFICATION_NO_ACCESS_ROLE)
-        userClient.close()
+//        userClient.close()
     }
 
     fun `test update slack notification config with user that has create Notification permission`() {
-        val user = "updateConfigUser"
+//        val user = "updateConfigUser"
         createUserWithCustomRole(user, NOTIFICATION_UPDATE_CONFIG_ACCESS, "", ROLE_TO_PERMISSION_MAPPING[NOTIFICATION_UPDATE_CONFIG_ACCESS])
-        val userClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
+        //        val userClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
 
         // Create sample config request reference
         val sampleSlack = Slack("https://domain.com/sample_slack_url#1234567890")
@@ -196,7 +220,7 @@ class SecurityNotificationConfigIT : PluginRestTestCase() {
             "${NotificationPlugin.PLUGIN_BASE_URI}/configs/$configId",
             updateRequestJsonString,
             RestStatus.OK.status,
-            userClient
+            userClient!!
         )
         Thread.sleep(1000)
 
@@ -210,13 +234,13 @@ class SecurityNotificationConfigIT : PluginRestTestCase() {
         verifySingleConfigEquals(configId, referenceObjectUpdate, getConfigResponse)
 
         deleteUserWithCustomRole(user, NOTIFICATION_UPDATE_CONFIG_ACCESS)
-        userClient.close()
+//        userClient.close()
     }
 
     fun `test update slack notification config without create Notification permission`() {
-        val user = "noPermissionsUser"
+//        val user = "noPermissionsUser"
         createUserWithCustomRole(user, NOTIFICATION_NO_ACCESS_ROLE, "", ROLE_TO_PERMISSION_MAPPING[NOTIFICATION_NO_ACCESS_ROLE])
-        val userClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
+        //        val userClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
 
         // Create sample config request reference
         val sampleSlack = Slack("https://domain.com/sample_slack_url#1234567890")
@@ -246,16 +270,16 @@ class SecurityNotificationConfigIT : PluginRestTestCase() {
             "${NotificationPlugin.PLUGIN_BASE_URI}/configs",
             createRequestJsonString,
             RestStatus.FORBIDDEN.status,
-            userClient
+            userClient!!
         )
         deleteUserWithCustomRole(user, NOTIFICATION_NO_ACCESS_ROLE)
-        userClient.close()
+//        userClient.close()
     }
 
     fun `test get slack notification config with user that has get Notification permission`() {
-        val user = "getConfigUser"
+//        val user = "getConfigUser"
         createUserWithCustomRole(user, NOTIFICATION_GET_CONFIG_ACCESS, "", ROLE_TO_PERMISSION_MAPPING[NOTIFICATION_GET_CONFIG_ACCESS])
-        val userClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
+        //        val userClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
 
         // Create sample config request reference
         val sampleSlack = Slack("https://domain.com/sample_slack_url#1234567890")
@@ -295,17 +319,17 @@ class SecurityNotificationConfigIT : PluginRestTestCase() {
             "${NotificationPlugin.PLUGIN_BASE_URI}/configs/$configId",
             "",
             RestStatus.OK.status,
-            userClient
+            userClient!!
         )
         verifySingleConfigEquals(configId, referenceObject, getConfigResponse)
         deleteUserWithCustomRole(user, NOTIFICATION_GET_CONFIG_ACCESS)
-        userClient.close()
+//        userClient.close()
     }
 
     fun `test get slack notification config without get Notification permission`() {
-        val user = "noPermissionsUser"
+//        val user = "noPermissionsUser"
         createUserWithCustomRole(user, NOTIFICATION_NO_ACCESS_ROLE, "", ROLE_TO_PERMISSION_MAPPING[NOTIFICATION_NO_ACCESS_ROLE])
-        val userClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
+        //        val userClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
 
         // Get Slack notification config
 
@@ -314,16 +338,16 @@ class SecurityNotificationConfigIT : PluginRestTestCase() {
             "${NotificationPlugin.PLUGIN_BASE_URI}/configs/randomConfig",
             "",
             RestStatus.FORBIDDEN.status,
-            userClient
+            userClient!!
         )
         deleteUserWithCustomRole(user, NOTIFICATION_NO_ACCESS_ROLE)
-        userClient.close()
+//        userClient.close()
     }
 
     fun `test delete slack notification config with user that has get Notification permission`() {
-        val user = "deleteConfigUser"
+//        val user = "deleteConfigUser"
         createUserWithCustomRole(user, NOTIFICATION_DELETE_CONFIG_ACCESS, "", ROLE_TO_PERMISSION_MAPPING[NOTIFICATION_DELETE_CONFIG_ACCESS])
-        val userClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
+        //        val userClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
 
         // Create sample config request reference
         val sampleSlack = Slack("https://domain.com/sample_slack_url#1234567890")
@@ -363,7 +387,7 @@ class SecurityNotificationConfigIT : PluginRestTestCase() {
             "${NotificationPlugin.PLUGIN_BASE_URI}/configs/$configId",
             "",
             RestStatus.OK.status,
-            userClient
+            userClient!!
         )
 
         // Should not be able to find config
@@ -375,13 +399,13 @@ class SecurityNotificationConfigIT : PluginRestTestCase() {
         )
 
         deleteUserWithCustomRole(user, NOTIFICATION_DELETE_CONFIG_ACCESS)
-        userClient.close()
+//        userClient.close()
     }
 
     fun `test delete slack notification config without get Notification permission`() {
-        val user = "noPermissionsUser"
+//        val user = "noPermissionsUser"
         createUserWithCustomRole(user, NOTIFICATION_NO_ACCESS_ROLE, "", ROLE_TO_PERMISSION_MAPPING[NOTIFICATION_NO_ACCESS_ROLE])
-        val userClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
+        //        val userClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
 
         // Get Slack notification config
 
@@ -390,16 +414,16 @@ class SecurityNotificationConfigIT : PluginRestTestCase() {
             "${NotificationPlugin.PLUGIN_BASE_URI}/configs/randomConfig",
             "",
             RestStatus.FORBIDDEN.status,
-            userClient
+            userClient!!
         )
         deleteUserWithCustomRole(user, NOTIFICATION_NO_ACCESS_ROLE)
-        userClient.close()
+//        userClient.close()
     }
 
     fun `test getChannelList should return only channels with get channel permission`() {
-        val user = "getChannelsUser"
+//        val user = "getChannelsUser"
         createUserWithCustomRole(user, NOTIFICATION_GET_CHANNEL_ACCESS, "", ROLE_TO_PERMISSION_MAPPING[NOTIFICATION_GET_CHANNEL_ACCESS])
-        val userClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
+        //        val userClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
 
         val slackId = createConfig(configType = ConfigType.SLACK)
         val chimeId = createConfig(configType = ConfigType.CHIME)
@@ -419,19 +443,19 @@ class SecurityNotificationConfigIT : PluginRestTestCase() {
             "${NotificationPlugin.PLUGIN_BASE_URI}/channels",
             "",
             RestStatus.OK.status,
-            userClient
+            userClient!!
         )
         Thread.sleep(100)
         verifyChannelIdEquals(channelIds, response, channelIds.size)
 
         deleteUserWithCustomRole(user, NOTIFICATION_GET_CHANNEL_ACCESS)
-        userClient.close()
+//        userClient.close()
     }
 
     fun `test getChannelList fails without get channel permission`() {
-        val user = "noPermissionsUser"
+//        val user = "noPermissionsUser"
         createUserWithCustomRole(user, NOTIFICATION_NO_ACCESS_ROLE, "", ROLE_TO_PERMISSION_MAPPING[NOTIFICATION_NO_ACCESS_ROLE])
-        val userClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
+        //        val userClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
 
         createConfig(configType = ConfigType.SLACK)
         Thread.sleep(1000)
@@ -441,53 +465,53 @@ class SecurityNotificationConfigIT : PluginRestTestCase() {
             "${NotificationPlugin.PLUGIN_BASE_URI}/channels",
             "",
             RestStatus.FORBIDDEN.status,
-            userClient
+            userClient!!
         )
 
         deleteUserWithCustomRole(user, NOTIFICATION_NO_ACCESS_ROLE)
-        userClient.close()
+//        userClient.close()
     }
 
     fun `test Get plugin features should return non-empty configTypes with get features permission`() {
-        val user = "getFeaturesUser"
+//        val user = "getFeaturesUser"
         createUserWithCustomRole(user, NOTIFICATION_GET_PLUGIN_FEATURE_ACCESS, "", ROLE_TO_PERMISSION_MAPPING[NOTIFICATION_GET_PLUGIN_FEATURE_ACCESS])
-        val userClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
+        //        val userClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
 
         val getResponse = executeRequest(
             RestRequest.Method.GET.name,
             "${NotificationPlugin.PLUGIN_BASE_URI}/features",
             "",
             RestStatus.OK.status,
-            userClient
+            userClient!!
         )
         Assert.assertFalse(getResponse.get("allowed_config_type_list").asJsonArray.isEmpty)
         val pluginFeatures = getResponse.get("plugin_features").asJsonObject
         Assert.assertFalse(pluginFeatures.keySet().isEmpty())
         deleteUserWithCustomRole(user, NOTIFICATION_GET_PLUGIN_FEATURE_ACCESS)
-        userClient.close()
+//        userClient.close()
     }
 
     fun `test Get plugin features fails without get features permission`() {
-        val user = "noPermissionsUser"
+//        val user = "noPermissionsUser"
         createUserWithCustomRole(user, NOTIFICATION_NO_ACCESS_ROLE, "", ROLE_TO_PERMISSION_MAPPING[NOTIFICATION_NO_ACCESS_ROLE])
-        val userClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
+        //        val userClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
 
         executeRequest(
             RestRequest.Method.GET.name,
             "${NotificationPlugin.PLUGIN_BASE_URI}/features",
             "",
             RestStatus.FORBIDDEN.status,
-            userClient
+            userClient!!
         )
         deleteUserWithCustomRole(user, NOTIFICATION_NO_ACCESS_ROLE)
-        userClient.close()
+//        userClient.close()
     }
 
     @Suppress("EmptyFunctionBlock")
     fun `test send test slack message with send permissions`() {
-        val user = "sendUser"
+//        val user = "sendUser"
         createUserWithCustomRole(user, NOTIFICATION_TEST_SEND_ACCESS, "", ROLE_TO_PERMISSION_MAPPING[NOTIFICATION_TEST_SEND_ACCESS])
-        val userClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
+        //        val userClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
 
         // Create webhook notification config
         val createRequestJsonString = """
@@ -519,7 +543,7 @@ class SecurityNotificationConfigIT : PluginRestTestCase() {
             "${NotificationPlugin.PLUGIN_BASE_URI}/feature/test/$configId",
             "",
             RestStatus.INTERNAL_SERVER_ERROR.status,
-            userClient
+            userClient!!
         )
 
         // verify failure response is with message
@@ -527,13 +551,13 @@ class SecurityNotificationConfigIT : PluginRestTestCase() {
         Assert.assertNotNull(error.get("reason").asString)
 
         deleteUserWithCustomRole(user, NOTIFICATION_TEST_SEND_ACCESS)
-        userClient.close()
+//        userClient.close()
     }
 
     fun `test send test slack message without send permissions`() {
-        val user = "sendUser"
+//        val user = "sendUser"
         createUserWithCustomRole(user, NOTIFICATION_NO_ACCESS_ROLE, "", ROLE_TO_PERMISSION_MAPPING[NOTIFICATION_NO_ACCESS_ROLE])
-        val userClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
+        //        val userClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
 
         // Create webhook notification config
         val createRequestJsonString = """
@@ -565,10 +589,10 @@ class SecurityNotificationConfigIT : PluginRestTestCase() {
             "${NotificationPlugin.PLUGIN_BASE_URI}/feature/test/$configId",
             "",
             RestStatus.FORBIDDEN.status,
-            userClient
+            userClient!!
         )
 
         deleteUserWithCustomRole(user, NOTIFICATION_NO_ACCESS_ROLE)
-        userClient.close()
+//        userClient.close()
     }
 }

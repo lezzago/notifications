@@ -26,6 +26,7 @@ import org.opensearch.commons.rest.SecureRestClientBuilder
 import org.opensearch.notifications.NotificationPlugin
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestStatus
+import org.opensearch.test.junit.annotations.TestLogging
 import org.opensearch.test.rest.OpenSearchRestTestCase
 import java.io.IOException
 import java.nio.file.Files
@@ -35,6 +36,7 @@ import javax.management.ObjectName
 import javax.management.remote.JMXConnectorFactory
 import javax.management.remote.JMXServiceURL
 
+@TestLogging("level:DEBUG", reason = "Debug for tests.")
 abstract class PluginRestTestCase : OpenSearchRestTestCase() {
 
     protected fun isHttps(): Boolean {
@@ -98,10 +100,10 @@ abstract class PluginRestTestCase : OpenSearchRestTestCase() {
             .build()
     }
 
-    fun getClient(): RestClient {
-//        return if (isHttps()) adminClient() else client()
-        return client()
-    }
+//    fun getClient(): RestClient {
+////        return if (isHttps()) adminClient() else client()
+//        return client()
+//    }
 
     @Throws(IOException::class)
     override fun buildClient(settings: Settings, hosts: Array<HttpHost>): RestClient {
@@ -109,6 +111,7 @@ abstract class PluginRestTestCase : OpenSearchRestTestCase() {
             val keystore = settings.get(ConfigConstants.OPENSEARCH_SECURITY_SSL_HTTP_KEYSTORE_FILEPATH)
             return when (keystore != null) {
                 true -> {
+                    logger.info("the client being built is super client")
                     // create adminDN (super-admin) client
                     val uri = javaClass.classLoader.getResource("security/sample.pem").toURI()
                     val configPath = PathUtils.get(uri).parent.toAbsolutePath()
@@ -118,10 +121,12 @@ abstract class PluginRestTestCase : OpenSearchRestTestCase() {
                     // create client with passed user
                     val userName = System.getProperty("user")
                     val password = System.getProperty("password")
+                    logger.info("the client being built is admin client: $userName:$password")
                     SecureRestClientBuilder(hosts, isHttps(), userName, password).setSocketTimeout(60000).build()
                 }
             }
         } else {
+            logger.info("the client being built is a basic client")
             val builder = RestClient.builder(*hosts)
             configureClient(builder, settings)
             builder.setStrictDeprecationMode(true)
@@ -134,7 +139,7 @@ abstract class PluginRestTestCase : OpenSearchRestTestCase() {
         url: String,
         jsonString: String,
         expectedRestStatus: Int? = null,
-        client: RestClient = getClient()
+        client: RestClient = client()
     ): JsonObject {
         val request = Request(method, url)
         request.setJsonEntity(jsonString)
@@ -144,10 +149,11 @@ abstract class PluginRestTestCase : OpenSearchRestTestCase() {
         return executeRequest(request, expectedRestStatus, client)
     }
 
-    fun executeRequest(request: Request, expectedRestStatus: Int? = null, client: RestClient = getClient()): JsonObject {
+    fun executeRequest(request: Request, expectedRestStatus: Int? = null, client: RestClient = client()): JsonObject {
         val response = try {
             client.performRequest(request)
         } catch (exception: ResponseException) {
+            logger.error("Execute request error: ${exception.message}")
             exception.response
         }
         if (expectedRestStatus != null) {
@@ -165,13 +171,23 @@ abstract class PluginRestTestCase : OpenSearchRestTestCase() {
             "\"backend_roles\": [$broles],\n" +
             "\"attributes\": {\n" +
             "}} "
+        logger.info("user create: $entity")
         request.setJsonEntity(entity)
         client().performRequest(request)
+
+//        executeRequest(
+//            RestRequest.Method.PUT.name,
+//            "/_plugins/_security/api/internalusers/$name",
+//            entity,
+//            RestStatus.CREATED.status
+//        )
     }
 
     fun deleteUser(name: String) {
-        val request = Request("DELETE", "/_plugins/_security/api/internalusers/$name")
-        client().performRequest(request)
+//        val request = Request("DELETE", "/_plugins/_security/api/internalusers/$name")
+//        client().performRequest(request)
+        val request = Request(RestRequest.Method.DELETE.name, "/_plugins/_security/api/internalusers/$name")
+        executeRequest(request, RestStatus.OK.status)
     }
 
     fun createUserRolesMapping(role: String, users: Array<String>) {
@@ -182,6 +198,37 @@ abstract class PluginRestTestCase : OpenSearchRestTestCase() {
             "  \"hosts\" : [  ],\n" +
             "  \"users\" : [$usersStr]\n" +
             "}"
+        logger.info("user role mapping: $entity")
+        request.setJsonEntity(entity)
+        client().performRequest(request)
+    }
+
+    fun addPatchUserRolesMapping(role: String, users: Array<String>) {
+        val request = Request("PATCH", "/_plugins/_security/api/rolesmapping/$role")
+        val usersStr = users.joinToString { it -> "\"$it\"" }
+
+        var entity = "[{\n" +
+            "  \"op\" : \"add\",\n" +
+            "  \"path\" : \"users\",\n" +
+            "  \"value\" : [$usersStr]\n" +
+            "}]"
+
+//        logger.info("user role mapping: $entity")
+        request.setJsonEntity(entity)
+        client().performRequest(request)
+    }
+
+    fun removePatchUserRolesMapping(role: String, users: Array<String>) {
+        val request = Request("PATCH", "/_plugins/_security/api/rolesmapping/$role")
+        val usersStr = users.joinToString { it -> "\"$it\"" }
+
+        var entity = "[{\n" +
+            "  \"op\" : \"remove\",\n" +
+            "  \"path\" : \"users\",\n" +
+            "  \"value\" : [$usersStr]\n" +
+            "}]"
+
+//        logger.info("user role mapping: $entity")
         request.setJsonEntity(entity)
         client().performRequest(request)
     }
@@ -210,11 +257,11 @@ abstract class PluginRestTestCase : OpenSearchRestTestCase() {
 
     fun createUserWithRoles(user: String, role: String, backendRole: String) {
         createUser(user, user, arrayOf(backendRole))
-        createUserRolesMapping(role, arrayOf(user))
+        addPatchUserRolesMapping(role, arrayOf(user))
     }
 
     fun deleteUserWithRoles(user: String, role: String) {
-        createUserRolesMapping(role, arrayOf())
+        removePatchUserRolesMapping(role, arrayOf(user))
         deleteUser(user)
     }
 
@@ -244,7 +291,7 @@ abstract class PluginRestTestCase : OpenSearchRestTestCase() {
         isEnabled: Boolean = true,
         smtpAccountId: String = "",
         emailGroupId: Set<String> = setOf(),
-        client: RestClient = getClient()
+        client: RestClient = client()
     ): String {
         val createRequestJsonString = getCreateRequestJsonString(
             nameSubstring,
