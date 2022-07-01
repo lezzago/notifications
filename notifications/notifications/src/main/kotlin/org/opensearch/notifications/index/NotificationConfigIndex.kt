@@ -105,7 +105,6 @@ internal object NotificationConfigIndex : ConfigOperations {
             val request = CreateIndexRequest(INDEX_NAME)
                 .mapping(indexMappingAsMap)
                 .settings(indexSettingsSource, XContentType.YAML)
-            log.info("Trying to create index")
             client.threadPool().threadContext.stashContext().use {
                 try {
                     val response: CreateIndexResponse = client.suspendUntilTimeout(PluginSettings.operationTimeoutMs) {
@@ -117,7 +116,6 @@ internal object NotificationConfigIndex : ConfigOperations {
                         throw IllegalStateException("$LOG_PREFIX:Index $INDEX_NAME creation not Acknowledged")
                     }
                 } catch (exception: Exception) {
-                    log.error("Failed to create index")
                     if (exception !is ResourceAlreadyExistsException && exception.cause !is ResourceAlreadyExistsException) {
                         throw exception
                     }
@@ -344,4 +342,3 @@ private fun ThreadContext.StoredContext.closeFinally(cause: Throwable?) = when (
         cause.addSuppressed(closeException)
     }
 }
-

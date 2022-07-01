@@ -26,7 +26,6 @@ import org.opensearch.commons.rest.SecureRestClientBuilder
 import org.opensearch.notifications.NotificationPlugin
 import org.opensearch.rest.RestRequest
 import org.opensearch.rest.RestStatus
-import org.opensearch.test.junit.annotations.TestLogging
 import org.opensearch.test.rest.OpenSearchRestTestCase
 import java.io.IOException
 import java.nio.file.Files
@@ -36,7 +35,6 @@ import javax.management.ObjectName
 import javax.management.remote.JMXConnectorFactory
 import javax.management.remote.JMXServiceURL
 
-@TestLogging("level:DEBUG", reason = "Debug for tests.")
 abstract class PluginRestTestCase : OpenSearchRestTestCase() {
 
     protected fun isHttps(): Boolean {
@@ -100,18 +98,12 @@ abstract class PluginRestTestCase : OpenSearchRestTestCase() {
             .build()
     }
 
-//    fun getClient(): RestClient {
-////        return if (isHttps()) adminClient() else client()
-//        return client()
-//    }
-
     @Throws(IOException::class)
     override fun buildClient(settings: Settings, hosts: Array<HttpHost>): RestClient {
         if (isHttps()) {
             val keystore = settings.get(ConfigConstants.OPENSEARCH_SECURITY_SSL_HTTP_KEYSTORE_FILEPATH)
             return when (keystore != null) {
                 true -> {
-                    logger.info("the client being built is super client")
                     // create adminDN (super-admin) client
                     val uri = javaClass.classLoader.getResource("security/sample.pem").toURI()
                     val configPath = PathUtils.get(uri).parent.toAbsolutePath()
@@ -121,12 +113,10 @@ abstract class PluginRestTestCase : OpenSearchRestTestCase() {
                     // create client with passed user
                     val userName = System.getProperty("user")
                     val password = System.getProperty("password")
-                    logger.info("the client being built is admin client: $userName:$password")
                     SecureRestClientBuilder(hosts, isHttps(), userName, password).setSocketTimeout(60000).build()
                 }
             }
         } else {
-            logger.info("the client being built is a basic client")
             val builder = RestClient.builder(*hosts)
             configureClient(builder, settings)
             builder.setStrictDeprecationMode(true)
@@ -153,7 +143,6 @@ abstract class PluginRestTestCase : OpenSearchRestTestCase() {
         val response = try {
             client.performRequest(request)
         } catch (exception: ResponseException) {
-            logger.error("Execute request error: ${exception.message}")
             exception.response
         }
         if (expectedRestStatus != null) {
@@ -166,26 +155,16 @@ abstract class PluginRestTestCase : OpenSearchRestTestCase() {
     fun createUser(name: String, passwd: String, backendRoles: Array<String>) {
         val request = Request("PUT", "/_plugins/_security/api/internalusers/$name")
         val broles = backendRoles.joinToString { it -> "\"$it\"" }
-        var entity = " {\n" +
+        val entity = " {\n" +
             "\"password\": \"$passwd\",\n" +
             "\"backend_roles\": [$broles],\n" +
             "\"attributes\": {\n" +
             "}} "
-        logger.info("user create: $entity")
         request.setJsonEntity(entity)
         client().performRequest(request)
-
-//        executeRequest(
-//            RestRequest.Method.PUT.name,
-//            "/_plugins/_security/api/internalusers/$name",
-//            entity,
-//            RestStatus.CREATED.status
-//        )
     }
 
     fun deleteUser(name: String) {
-//        val request = Request("DELETE", "/_plugins/_security/api/internalusers/$name")
-//        client().performRequest(request)
         val request = Request(RestRequest.Method.DELETE.name, "/_plugins/_security/api/internalusers/$name")
         executeRequest(request, RestStatus.OK.status)
     }
@@ -193,12 +172,11 @@ abstract class PluginRestTestCase : OpenSearchRestTestCase() {
     fun createUserRolesMapping(role: String, users: Array<String>) {
         val request = Request("PUT", "/_plugins/_security/api/rolesmapping/$role")
         val usersStr = users.joinToString { it -> "\"$it\"" }
-        var entity = "{                                  \n" +
+        val entity = "{                                  \n" +
             "  \"backend_roles\" : [  ],\n" +
             "  \"hosts\" : [  ],\n" +
             "  \"users\" : [$usersStr]\n" +
             "}"
-        logger.info("user role mapping: $entity")
         request.setJsonEntity(entity)
         client().performRequest(request)
     }
@@ -207,13 +185,12 @@ abstract class PluginRestTestCase : OpenSearchRestTestCase() {
         val request = Request("PATCH", "/_plugins/_security/api/rolesmapping/$role")
         val usersStr = users.joinToString { it -> "\"$it\"" }
 
-        var entity = "[{\n" +
+        val entity = "[{\n" +
             "  \"op\" : \"add\",\n" +
             "  \"path\" : \"users\",\n" +
             "  \"value\" : [$usersStr]\n" +
             "}]"
 
-//        logger.info("user role mapping: $entity")
         request.setJsonEntity(entity)
         client().performRequest(request)
     }
@@ -222,13 +199,12 @@ abstract class PluginRestTestCase : OpenSearchRestTestCase() {
         val request = Request("PATCH", "/_plugins/_security/api/rolesmapping/$role")
         val usersStr = users.joinToString { it -> "\"$it\"" }
 
-        var entity = "[{\n" +
+        val entity = "[{\n" +
             "  \"op\" : \"remove\",\n" +
             "  \"path\" : \"users\",\n" +
             "  \"value\" : [$usersStr]\n" +
             "}]"
 
-//        logger.info("user role mapping: $entity")
         request.setJsonEntity(entity)
         client().performRequest(request)
     }
@@ -340,36 +316,6 @@ abstract class PluginRestTestCase : OpenSearchRestTestCase() {
             this.value = if (value == null) "null" else "\"" + value + "\""
         }
     }
-//
-//    open fun preserveOSIndicesAfterTest(): Boolean = false
-//
-//    @Throws(IOException::class)
-//    @After
-//    open fun wipeAllOSIndices() {
-//        if (preserveOSIndicesAfterTest()) return
-//
-//        val response = adminClient().performRequest(Request("GET", "/_cat/indices?format=json&expand_wildcards=all"))
-//
-//        val xContentType = XContentType.fromMediaTypeOrFormat(response.entity.contentType.value)
-//        xContentType.xContent().createParser(
-//            NamedXContentRegistry.EMPTY, DeprecationHandler.THROW_UNSUPPORTED_OPERATION,
-//            response.entity.content
-//        ).use { parser ->
-//            for (index in parser.list()) {
-//                val jsonObject: Map<*, *> = index as java.util.HashMap<*, *>
-//                val indexName: String = jsonObject["index"] as String
-//                // .opendistro_security isn't allowed to delete from cluster
-//                if (".opendistro_security" != indexName) {
-//                    var request = Request("DELETE", "/$indexName")
-//                    // TODO: remove PERMISSIVE option after moving system index access to REST API call
-//                    val options = RequestOptions.DEFAULT.toBuilder()
-//                    options.setWarningsHandler(WarningsHandler.PERMISSIVE)
-//                    request.options = options.build()
-//                    adminClient().performRequest(request)
-//                }
-//            }
-//        }
-//    }
 
     companion object {
         internal interface IProxy {

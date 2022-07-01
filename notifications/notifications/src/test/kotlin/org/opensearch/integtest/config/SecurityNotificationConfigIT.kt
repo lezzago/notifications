@@ -14,7 +14,7 @@ import org.opensearch.commons.notifications.model.ConfigType
 import org.opensearch.commons.notifications.model.NotificationConfig
 import org.opensearch.commons.notifications.model.Slack
 import org.opensearch.commons.rest.SecureRestClientBuilder
-import org.opensearch.integtest.ALL_ACCESS_ROLE
+import org.opensearch.integtest.NOTIFICATION_CREATE_CONFIG_ACCESS
 import org.opensearch.integtest.NOTIFICATION_DELETE_CONFIG_ACCESS
 import org.opensearch.integtest.NOTIFICATION_GET_CHANNEL_ACCESS
 import org.opensearch.integtest.NOTIFICATION_GET_CONFIG_ACCESS
@@ -47,7 +47,7 @@ class SecurityNotificationConfigIT : PluginRestTestCase() {
     fun create() {
 
         if (userClient == null) {
-//            createUser(user, user, arrayOf())
+            createUser(user, user, arrayOf())
             userClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
         }
     }
@@ -56,13 +56,11 @@ class SecurityNotificationConfigIT : PluginRestTestCase() {
     fun cleanup() {
 
         userClient?.close()
-//        deleteUser(user)
+        deleteUser(user)
     }
 
     fun `test Create slack notification config with user that has create Notification permission`() {
-//        val user = "tempo"
         createUserWithCustomRole(user, NOTIFICATION_CREATE_CONFIG_ACCESS, "", ROLE_TO_PERMISSION_MAPPING[NOTIFICATION_CREATE_CONFIG_ACCESS])
-//        val userClient2 = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
 
         // Create sample config request reference
         val sampleSlack = Slack("https://domain.com/sample_slack_url#1234567890")
@@ -108,14 +106,11 @@ class SecurityNotificationConfigIT : PluginRestTestCase() {
             verifySingleConfigEquals(configId, referenceObject, getConfigResponse)
         } finally {
             deleteUserWithCustomRole(user, NOTIFICATION_CREATE_CONFIG_ACCESS)
-//            userClient2.close()
         }
     }
 
     fun `test Create slack notification config without create Notification permission`() {
-//        val user = "noPermissionsUser"
         createUserWithCustomRole(user, NOTIFICATION_NO_ACCESS_ROLE, "", ROLE_TO_PERMISSION_MAPPING[NOTIFICATION_NO_ACCESS_ROLE])
-        //        val userClient = SecureRestClientBuilder(clusterHosts.toTypedArray(), isHttps(), user, user).setSocketTimeout(60000).build()
 
         // Create sample config request reference
         val sampleSlack = Slack("https://domain.com/sample_slack_url#1234567890")
