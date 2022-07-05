@@ -45,10 +45,13 @@ jobs:
           qualifier=`echo $plugin|awk -F- '{print $4}'| cut -d. -f 1-1`
           candidate_version=`echo $plugin|awk -F- '{print $5}'| cut -d. -f 1-1`
           docker_version=$version
+
           [[ -z $candidate_version ]] && candidate_version=$qualifier && qualifier=""
+
           echo plugin version plugin_version qualifier candidate_version docker_version
           echo "($plugin) ($version) ($plugin_version) ($qualifier) ($candidate_version) ($docker_version)"
           echo $ls $list_of_all_files
+
           if docker pull opensearchstaging/opensearch:$docker_version
           then
             echo "FROM opensearchstaging/opensearch:$docker_version" >> Dockerfile
@@ -56,7 +59,7 @@ jobs:
             echo "RUN /usr/share/opensearch/bin/opensearch-plugin remove opensearch-notifications-core;" >> Dockerfile
             echo "ADD notifications/core/build/distributions/$plugin_core /tmp/" >> Dockerfile
             echo "RUN /usr/share/opensearch/bin/opensearch-plugin install --batch file:/tmp/$plugin_core" >> Dockerfile
-            echo "ADD notifications/core/build/distributions/$plugin /tmp/" >> Dockerfile
+            echo "ADD notifications/notifications/build/distributions/$plugin /tmp/" >> Dockerfile
             echo "RUN /usr/share/opensearch/bin/opensearch-plugin install --batch file:/tmp/$plugin" >> Dockerfile
             docker build -t opensearch-notifications:test .
             echo "imagePresent=true" >> $GITHUB_ENV
